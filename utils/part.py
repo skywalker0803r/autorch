@@ -201,5 +201,5 @@ class PartBulider(object):
         # normalize
         if self.normalize_idx_list != None:
             for idx in self.normalize_idx_list:
-                predict.iloc[:,idx] = normalize(predict.iloc[:,idx])
+                predict.iloc[:,idx] = self.normalize(predict.iloc[:,idx])
         return predict
