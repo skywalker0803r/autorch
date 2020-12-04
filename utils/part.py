@@ -36,10 +36,12 @@ class PartBulider(object):
         lr = 1e-3,
         max_epochs = 300,
         log_interval = 50,
+        n_round = 3,# The number after the floating point number
         normalize_idx_list = None,
         ):
         
-        # config  
+        # config
+        self.n_round = n_round
         self.normalize_idx_list = normalize_idx_list
         self.log_interval = log_interval
         self.x_col = x_col
@@ -206,4 +208,7 @@ class PartBulider(object):
         if self.normalize_idx_list != None:
             for idx in self.normalize_idx_list:
                 predict.iloc[:,idx] = self.normalize(predict.iloc[:,idx])
+        
+        # The number after the floating point number
+        predict = predict.round(self.n_round)
         return predict
