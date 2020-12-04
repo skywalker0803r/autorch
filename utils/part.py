@@ -58,7 +58,7 @@ class PartBulider(object):
             nn.Linear(self.hidden_size,len(self.y_col)),nn.Sigmoid(),
             ).apply(self.init_weights)
         # loss function
-        self.loss_fn = lambda y_i,y:torch.mean((y_i-y)**2)
+        self.loss_fn = nn.MSELoss()
         # optimizer
         self.optimizer = torch.optim.Adam(self.net.parameters(),lr=self.lr)
         # dataset
@@ -184,11 +184,11 @@ class PartBulider(object):
         '''
         show model metrics
         '''
-        predict = self.get_predict(self.data['X_test'])
+        predict = self.predict(self.data['X_test'])
         res = self.show_metrics(predict,self.data['Y_test'])
         return res
 
-    def get_predict(self,x):
+    def predict(self,x):
         '''
         input :pandas.DataFrame()
         return :pandas.DataFrame()
