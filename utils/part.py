@@ -36,7 +36,7 @@ class PartBulider(object):
         lr = 1e-3,
         max_epochs = 300,
         log_interval = 50,
-        n_round = 3,# The number after the floating point number
+        n_round = 32,# The number after the floating point number
         normalize_idx_list = None,
         ):
         
