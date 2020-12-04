@@ -2,10 +2,10 @@ from setuptools import setup, find_packages
 
 setup(
     name = "AUTORCH",
-    version = "0.1.0",
+    version = "0.1.1",
     description = ("help use pytorch eazy"),
     packages = find_packages(),
-    url="",
+    url="https://github.com/skywalker0803r/autorch",
     author = "ricky-yu",
     author_email = "skywalker0803r@gmail.com",
     install_requires = [

@@ -8,12 +8,9 @@ from torch import tensor
 from torch.nn import Linear,ReLU,Sigmoid,Tanh
 import torch.optim as optim
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler,MinMaxScaler
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.express as px
 from sklearn.metrics import r2_score,mean_squared_error
 from math import sqrt
 import joblib
@@ -41,6 +38,7 @@ class PartBulider(object):
         log_interval = 50,
         normalize_idx_list = None,
         ):
+        
         # config  
         self.normalize_idx_list = normalize_idx_list
         self.log_interval = log_interval
@@ -51,25 +49,31 @@ class PartBulider(object):
         self.max_epochs = max_epochs
         self.ss_x = MinMaxScaler().fit(df[x_col])
         self.ss_y = MinMaxScaler().fit(df[y_col])
+        
         # net
         self.net = nn.Sequential(
             nn.Linear(len(self.x_col),self.hidden_size),nn.ReLU(),
             nn.Linear(self.hidden_size,self.hidden_size),nn.ReLU(),
             nn.Linear(self.hidden_size,len(self.y_col)),nn.Sigmoid(),
             ).apply(self.init_weights)
+        
         # loss function
         self.loss_fn = nn.MSELoss()
+        
         # optimizer
         self.optimizer = torch.optim.Adam(self.net.parameters(),lr=self.lr)
+        
         # dataset
         self.data = self.split_data(df,self.x_col,self.y_col)
-        # data_iter
+        
+        # train_data_iter
         self.train_data = TensorDataset(
             torch.FloatTensor(self.ss_x.transform(self.data['X_train'])),
             torch.FloatTensor(self.ss_y.transform(self.data['Y_train'])),
             )
         self.train_iter = DataLoader(self.train_data,batch_size=64)
-    
+
+        # vaild_data_iter
         self.vaild_data = TensorDataset(
             torch.FloatTensor(self.ss_x.transform(self.data['X_vaild'])),
             torch.FloatTensor(self.ss_y.transform(self.data['Y_vaild'])),
