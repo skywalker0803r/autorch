@@ -14,7 +14,7 @@ part1.test()
 
 This will automatically perform the entire data modeling process internally, using the pytorch framework
 
-![train](benchmarks/train.png)
+![train](benchmarks/train.PNG)
 
 ## Installation
 
