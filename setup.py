@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
 setup(
-    name = "AUTORCH",
-    version = "0.1.1",
-    description = ("help use pytorch eazy"),
+    name = "autorch",
+    version = "0.1.2",
+    description = ("auto pytorch"),
     packages = find_packages(),
     url="https://github.com/skywalker0803r/autorch",
     author = "ricky-yu",
@@ -14,8 +14,6 @@ setup(
         "matplotlib",
         "scikit-learn",
         "joblib",
-        "seaborn",
-        "plotly",
         "torch",
         "tensorboard",
         "tqdm",
