@@ -16,10 +16,10 @@ This will automatically perform the entire data modeling process internally, usi
 
 ## Installation
 
-We have tested `acme` on Python 3.6 & 3.7.
+We have tested `autorch` on Python 3.6 & 3.7.
 
 ```bash
-    pip install autorch
+pip install autorch
 ```
 
 ## Citing autorch
