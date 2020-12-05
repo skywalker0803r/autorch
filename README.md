@@ -14,6 +14,8 @@ part1.test()
 
 This will automatically perform the entire data modeling process internally, using the pytorch framework
 
+![train](benchmarks/train.png)
+
 ## Installation
 
 We have tested `autorch` on Python 3.6 & 3.7.
