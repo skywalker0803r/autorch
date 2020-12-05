@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score,mean_squared_error
 from math import sqrt
 import joblib
-from torch.utils.tensorboard import SummaryWriter
 import warnings;warnings.simplefilter('ignore')
 from tqdm import tqdm
 import os
