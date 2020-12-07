@@ -37,12 +37,14 @@ class PartBulider(object):
         log_interval = 50,
         n_round = 32,# The number after the floating point number
         normalize_idx_list = None,
+        device = "cpu",
         ):
         
         # config
         self.n_round = n_round
         self.normalize_idx_list = normalize_idx_list
         self.log_interval = log_interval
+        self.device = device
         self.x_col = x_col
         self.y_col = y_col
         self.hidden_size = hidden_size
@@ -56,7 +58,7 @@ class PartBulider(object):
             nn.Linear(len(self.x_col),self.hidden_size),nn.ReLU(),
             nn.Linear(self.hidden_size,self.hidden_size),nn.ReLU(),
             nn.Linear(self.hidden_size,len(self.y_col)),nn.Sigmoid(),
-            ).apply(self.init_weights)
+            ).apply(self.init_weights).to(self.device)
         
         # loss function
         self.loss_fn = nn.MSELoss()
@@ -71,14 +73,14 @@ class PartBulider(object):
         self.train_data = TensorDataset(
             torch.FloatTensor(self.ss_x.transform(self.data['X_train'])),
             torch.FloatTensor(self.ss_y.transform(self.data['Y_train'])),
-            )
+            ).to(self.device)
         self.train_iter = DataLoader(self.train_data,batch_size=64)
 
         # vaild_data_iter
         self.vaild_data = TensorDataset(
             torch.FloatTensor(self.ss_x.transform(self.data['X_vaild'])),
             torch.FloatTensor(self.ss_y.transform(self.data['Y_vaild'])),
-            )
+            ).to(self.device)
         self.vaild_iter = DataLoader(self.vaild_data,batch_size=64)
     
     '''
