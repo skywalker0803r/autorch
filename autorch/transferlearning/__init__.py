@@ -1,1 +1,2 @@
-#TODO
+from .wadda import WADDA
+
