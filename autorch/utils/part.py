@@ -71,16 +71,16 @@ class PartBulider(object):
         
         # train_data_iter
         self.train_data = TensorDataset(
-            torch.FloatTensor(self.ss_x.transform(self.data['X_train'])),
-            torch.FloatTensor(self.ss_y.transform(self.data['Y_train'])),
-            ).to(self.device)
+            torch.FloatTensor(self.ss_x.transform(self.data['X_train'])).to(self.device),
+            torch.FloatTensor(self.ss_y.transform(self.data['Y_train'])).to(self.device),
+            )
         self.train_iter = DataLoader(self.train_data,batch_size=64)
 
         # vaild_data_iter
         self.vaild_data = TensorDataset(
-            torch.FloatTensor(self.ss_x.transform(self.data['X_vaild'])),
-            torch.FloatTensor(self.ss_y.transform(self.data['Y_vaild'])),
-            ).to(self.device)
+            torch.FloatTensor(self.ss_x.transform(self.data['X_vaild'])).to(self.device),
+            torch.FloatTensor(self.ss_y.transform(self.data['Y_vaild'])).to(self.device),
+            )
         self.vaild_iter = DataLoader(self.vaild_data,batch_size=64)
     
     '''
@@ -201,8 +201,8 @@ class PartBulider(object):
         return :pandas.DataFrame()
         '''
         data_index = x.index
-        predict = self.net(torch.FloatTensor(self.ss_x.transform(x)))
-        predict = self.ss_y.inverse_transform(predict.detach().numpy())
+        predict = self.net(torch.FloatTensor(self.ss_x.transform(x)).to(self.device))
+        predict = self.ss_y.inverse_transform(predict.detach().cpu().numpy())
         predict = pd.DataFrame(predict,index=data_index,columns=self.y_col)
     
         # normalize
