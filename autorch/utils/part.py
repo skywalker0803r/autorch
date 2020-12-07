@@ -211,3 +211,15 @@ class PartBulider(object):
         # The number after the floating point number
         predict = predict.round(self.n_round)
         return predict
+
+    def shrink(self):
+        '''
+        drop all data ready to save as pkl file
+        '''
+        self.data = None
+        self.train_data = None
+        self.vaild_data = None
+        self.train_iter = None
+        self.vaild_iter = None
+        self.optimizer = None
+        return self
