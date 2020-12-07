@@ -224,4 +224,7 @@ class PartBulider(object):
         self.train_iter = None
         self.vaild_iter = None
         self.optimizer = None
-        return self
+    
+    def to(self,device):
+        self.device = device
+        self.net.to(self.device)
