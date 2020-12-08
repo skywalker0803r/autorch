@@ -19,7 +19,7 @@ from tqdm import tqdm
 import os
 from sklearn.utils import shuffle
 import random
-from loss_function import hingeLoss
+from .loss_function import hingeLoss
 
 class PartBulider(object):
     '''
