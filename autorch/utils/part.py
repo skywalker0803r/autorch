@@ -87,8 +87,10 @@ class PartBulider(object):
     ## help functions area ##
     '''
     @staticmethod
-    def mape(y_true, y_pred): 
+    def mape(y_true, y_pred,e=1e-2):
         y_true, y_pred = np.array(y_true), np.array(y_pred)
+        mask = y_true > e
+        y_true, y_pred = y_true[mask], y_pred[mask]
         return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
     @staticmethod
@@ -103,7 +105,7 @@ class PartBulider(object):
         data['X_test'],data['Y_test'] = X.iloc[sp2:,:],Y.iloc[sp2:,:]
         return data
 
-    def show_metrics(self,y_pred,y_real):
+    def show_metrics(self,y_real,y_pred):
         res = pd.DataFrame(index=y_pred.columns,columns=['R2','MSE','MAPE'])
         for i in y_pred.columns:
             res.loc[i,'R2'] = r2_score(y_real[i],y_pred[i])
