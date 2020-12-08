@@ -19,6 +19,7 @@ from tqdm import tqdm
 import os
 from sklearn.utils import shuffle
 import random
+from .loss_function import hingeLoss
 
 class PartBulider(object):
     '''
@@ -38,9 +39,11 @@ class PartBulider(object):
         n_round = 32,# The number after the floating point number
         normalize_idx_list = None,
         device = "cpu",
+        hingeLoss = False
         ):
         
         # config
+        self.hingeLoss = hingeLoss
         self.n_round = n_round
         self.normalize_idx_list = normalize_idx_list
         self.log_interval = log_interval
@@ -61,7 +64,10 @@ class PartBulider(object):
             ).apply(self.init_weights).to(self.device)
         
         # loss function
-        self.loss_fn = nn.MSELoss()
+        if self.hingeLoss == True:
+            self.loss_fn = hingeLoss
+        else:
+            self.loss_fn = nn.SmoothL1Loss()
         
         # optimizer
         self.optimizer = torch.optim.Adam(self.net.parameters(),lr=self.lr)
@@ -138,7 +144,10 @@ class PartBulider(object):
         total_loss = 0
         for t,(x,y) in enumerate(self.train_iter):
             y_hat = self.net(x)
-            loss = self.loss_fn(y_hat,y)
+            if self.hingeLoss == True:
+                loss = self.loss_fn(y_hat,y,self.net)
+            else:
+                loss = self.loss_fn(y_hat,y)
             loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad()
@@ -187,7 +196,7 @@ class PartBulider(object):
         plt.plot(history['valid_loss'],label='valid_loss')
         plt.legend()
         plt.show()
-        return best_model
+        return self
 
     def test(self,e=1e-8):
         '''
