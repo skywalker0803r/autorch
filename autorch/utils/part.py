@@ -19,7 +19,7 @@ from tqdm import tqdm
 import os
 from sklearn.utils import shuffle
 import random
-from .loss_function import hingeLoss
+from loss_function import hingeLoss
 
 class PartBulider(object):
     '''
@@ -39,11 +39,11 @@ class PartBulider(object):
         n_round = 32,# The number after the floating point number
         normalize_idx_list = None,
         device = "cpu",
-        hingeLoss = False
+        use_hingeLoss = False
         ):
         
         # config
-        self.hingeLoss = hingeLoss
+        self.use_hingeLoss = use_hingeLoss
         self.n_round = n_round
         self.normalize_idx_list = normalize_idx_list
         self.log_interval = log_interval
@@ -64,7 +64,7 @@ class PartBulider(object):
             ).apply(self.init_weights).to(self.device)
         
         # loss function
-        if self.hingeLoss == True:
+        if self.use_hingeLoss == True:
             self.loss_fn = hingeLoss
         else:
             self.loss_fn = nn.SmoothL1Loss()
@@ -144,7 +144,7 @@ class PartBulider(object):
         total_loss = 0
         for t,(x,y) in enumerate(self.train_iter):
             y_hat = self.net(x)
-            if self.hingeLoss == True:
+            if self.use_hingeLoss == True:
                 loss = self.loss_fn(y_hat,y,self.net)
             else:
                 loss = self.loss_fn(y_hat,y)
@@ -160,7 +160,10 @@ class PartBulider(object):
         total_loss = 0
         for t,(x,y) in enumerate(self.vaild_iter):
             y_hat = self.net(x)
-            loss = self.loss_fn(y_hat,y)
+            if self.use_hingeLoss == True:
+                loss = self.loss_fn(y_hat,y,self.net)
+            else:
+                loss = self.loss_fn(y_hat,y)
             total_loss += loss.item()
         return total_loss/(t+1)
 
