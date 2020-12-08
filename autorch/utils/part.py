@@ -87,7 +87,7 @@ class PartBulider(object):
     ## help functions area ##
     '''
     @staticmethod
-    def mape(y_true, y_pred,e=1e-2):
+    def mape(y_true, y_pred, e = 1e-8):
         y_true, y_pred = np.array(y_true), np.array(y_pred)
         mask = y_true > e
         y_true, y_pred = y_true[mask], y_pred[mask]
@@ -105,12 +105,12 @@ class PartBulider(object):
         data['X_test'],data['Y_test'] = X.iloc[sp2:,:],Y.iloc[sp2:,:]
         return data
 
-    def show_metrics(self,y_real,y_pred):
+    def show_metrics(self,y_real,y_pred,e=1e-8):
         res = pd.DataFrame(index=y_pred.columns,columns=['R2','MSE','MAPE'])
         for i in y_pred.columns:
             res.loc[i,'R2'] = r2_score(y_real[i],y_pred[i])
             res.loc[i,'MSE'] = mean_squared_error(y_real[i],y_pred[i])
-            res.loc[i,'MAPE'] = self.mape(y_real[i],y_pred[i])
+            res.loc[i,'MAPE'] = self.mape(y_real[i],y_pred[i],e)
         res.loc['AVG'] = res.mean(axis=0)
         return res
     
@@ -189,12 +189,12 @@ class PartBulider(object):
         plt.show()
         return best_model
 
-    def test(self):
+    def test(self,e=1e-8):
         '''
         show model metrics
         '''
         predict = self.predict(self.data['X_test'])
-        res = self.show_metrics(predict,self.data['Y_test'])
+        res = self.show_metrics(self.data['Y_test'],predict,e)
         return res
 
     def predict(self,x):
