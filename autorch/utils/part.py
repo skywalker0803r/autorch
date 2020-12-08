@@ -108,7 +108,7 @@ class PartBulider(object):
     def show_metrics(self,y_real,y_pred,e=1e-8):
         res = pd.DataFrame(index=y_pred.columns,columns=['R2','MSE','MAPE'])
         for i in y_pred.columns:
-            res.loc[i,'R2'] = r2_score(y_real[i],y_pred[i])
+            res.loc[i,'R2'] = np.max(r2_score(y_real[i],y_pred[i]),0)
             res.loc[i,'MSE'] = mean_squared_error(y_real[i],y_pred[i])
             res.loc[i,'MAPE'] = self.mape(y_real[i],y_pred[i],e)
         res.loc['AVG'] = res.mean(axis=0)
