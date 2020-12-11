@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "autorch",
-    version = "0.2.5",
+    version = "0.2.6",
     description = ("auto pytorch"),
     packages = find_packages(),
     url="https://github.com/skywalker0803r/autorch",
@@ -15,6 +15,7 @@ setup(
         "scikit-learn",
         "joblib",
         "torch",
+        "torch-dct",
         "tensorboard",
         "tqdm",
     ]

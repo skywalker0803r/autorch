@@ -19,7 +19,7 @@ from tqdm import tqdm
 import os
 from sklearn.utils import shuffle
 import random
-from .loss_function import hingeLoss
+import robust_loss_pytorch.general
 
 class PartBulider(object):
     '''
@@ -33,24 +33,28 @@ class PartBulider(object):
         x_col,
         y_col,
         hidden_size = 256,
+        batch_size = 64,
         lr = 1e-3,
         max_epochs = 300,
         log_interval = 50,
         n_round = 32,# The number after the floating point number
+        cut_way = [0.8,0.9],
         normalize_idx_list = None,
         device = "cpu",
-        use_hingeLoss = False
+        use_robust_Loss = False
         ):
         
         # config
-        self.use_hingeLoss = use_hingeLoss
+        self.use_robust_Loss = use_robust_Loss
         self.n_round = n_round
+        self.cut_way = cut_way
         self.normalize_idx_list = normalize_idx_list
         self.log_interval = log_interval
         self.device = device
         self.x_col = x_col
         self.y_col = y_col
         self.hidden_size = hidden_size
+        self.batch_size = batch_size
         self.lr = lr
         self.max_epochs = max_epochs
         self.ss_x = MinMaxScaler().fit(df[x_col])
@@ -64,13 +68,22 @@ class PartBulider(object):
             ).apply(self.init_weights).to(self.device)
         
         # loss function
-        if self.use_hingeLoss == True:
-            self.loss_fn = hingeLoss
+        if self.use_robust_Loss == True:
+            print('use_robust_Loss')
+            adaptive = robust_loss_pytorch.adaptive.AdaptiveLossFunction(
+                num_dims = len(self.y_col), 
+                float_dtype = np.float32, 
+                device = self.device)
+            def loss_fn(y_i,y):
+                return torch.mean(adaptive.lossfun((y_i - y)))
+            self.loss_fn = loss_fn
+            params = list(self.net.parameters()) + list(adaptive.parameters())
         else:
             self.loss_fn = nn.SmoothL1Loss()
+            params = list(self.net.parameters())
         
         # optimizer
-        self.optimizer = torch.optim.Adam(self.net.parameters(),lr=self.lr)
+        self.optimizer = torch.optim.Adam(params,lr=self.lr)
         
         # dataset
         self.data = self.split_data(df,self.x_col,self.y_col)
@@ -80,14 +93,14 @@ class PartBulider(object):
             torch.FloatTensor(self.ss_x.transform(self.data['X_train'])).to(self.device),
             torch.FloatTensor(self.ss_y.transform(self.data['Y_train'])).to(self.device),
             )
-        self.train_iter = DataLoader(self.train_data,batch_size=64)
+        self.train_iter = DataLoader(self.train_data,batch_size=self.batch_size)
 
         # vaild_data_iter
         self.vaild_data = TensorDataset(
             torch.FloatTensor(self.ss_x.transform(self.data['X_vaild'])).to(self.device),
             torch.FloatTensor(self.ss_y.transform(self.data['Y_vaild'])).to(self.device),
             )
-        self.vaild_iter = DataLoader(self.vaild_data,batch_size=64)
+        self.vaild_iter = DataLoader(self.vaild_data,batch_size=self.batch_size)
     
     '''
     ## help functions area ##
@@ -99,12 +112,11 @@ class PartBulider(object):
         y_true, y_pred = y_true[mask], y_pred[mask]
         return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
-    @staticmethod
-    def split_data(df,x_col,y_col):
+    def split_data(self,df,x_col,y_col):
         df = shuffle(df).astype('float32')
         X,Y = df[x_col],df[y_col]
-        sp1 = int(len(df)*0.8)
-        sp2 = int(len(df)*0.9)
+        sp1 = int(len(df)*self.cut_way[0])
+        sp2 = int(len(df)*self.cut_way[1])
         data = {}
         data['X_train'],data['Y_train'] = X.iloc[:sp1,:],Y.iloc[:sp1,:]
         data['X_vaild'],data['Y_vaild'] = X.iloc[sp1:sp2,:],Y.iloc[sp1:sp2,:]
@@ -114,7 +126,7 @@ class PartBulider(object):
     def show_metrics(self,y_real,y_pred,e=1e-8):
         res = pd.DataFrame(index=y_pred.columns,columns=['R2','MSE','MAPE'])
         for i in y_pred.columns:
-            res.loc[i,'R2'] = max(r2_score(y_real[i],y_pred[i]),0)
+            res.loc[i,'R2'] = np.clip(r2_score(y_real[i],y_pred[i]),0,1)
             res.loc[i,'MSE'] = mean_squared_error(y_real[i],y_pred[i])
             res.loc[i,'MAPE'] = self.mape(y_real[i],y_pred[i],e)
         res.loc['AVG'] = res.mean(axis=0)
@@ -144,10 +156,7 @@ class PartBulider(object):
         total_loss = 0
         for t,(x,y) in enumerate(self.train_iter):
             y_hat = self.net(x)
-            if self.use_hingeLoss == True:
-                loss = self.loss_fn(y_hat,y,self.net)
-            else:
-                loss = self.loss_fn(y_hat,y)
+            loss = self.loss_fn(y_hat,y)
             loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad()
@@ -160,10 +169,7 @@ class PartBulider(object):
         total_loss = 0
         for t,(x,y) in enumerate(self.vaild_iter):
             y_hat = self.net(x)
-            if self.use_hingeLoss == True:
-                loss = self.loss_fn(y_hat,y,self.net)
-            else:
-                loss = self.loss_fn(y_hat,y)
+            loss = self.loss_fn(y_hat,y)
             total_loss += loss.item()
         return total_loss/(t+1)
 
@@ -184,8 +190,8 @@ class PartBulider(object):
             history['train_loss'].append(self.train_step())
             history['valid_loss'].append(self.valid_step())
       
-            # pring info
-            if i%self.log_interval == 0:
+            # print info
+            if i % self.log_interval == 0:
                 print("epoch:{} train_loss:{:.4f} valid_loss:{:.4f}".format(i,history['train_loss'][-1],history['valid_loss'][-1]))
       
             # keep the best model
@@ -214,10 +220,10 @@ class PartBulider(object):
         input :pandas.DataFrame()
         return :pandas.DataFrame()
         '''
-        data_index = x.index
+        self.net.eval()
         predict = self.net(torch.FloatTensor(self.ss_x.transform(x)).to(self.device))
         predict = self.ss_y.inverse_transform(predict.detach().cpu().numpy())
-        predict = pd.DataFrame(predict,index=data_index,columns=self.y_col)
+        predict = pd.DataFrame(predict,index=x.index,columns=self.y_col)
     
         # normalize
         if self.normalize_idx_list != None:
@@ -242,3 +248,14 @@ class PartBulider(object):
     def to(self,device):
         self.device = device
         self.net.to(self.device)
+
+# test
+if __name__ == '__main__':
+    fake_df = pd.DataFrame(np.random.normal(size=(1000,20)))
+    x_col = fake_df.columns[:10]
+    y_col = fake_df.columns[10:]
+    part = PartBulider(fake_df,x_col,y_col,use_robust_Loss=True)
+    part.train()
+    res = part.test()
+    print(res)
+    
