@@ -19,7 +19,7 @@ from tqdm import tqdm
 import os
 from sklearn.utils import shuffle
 import random
-import robust_loss_pytorch.general
+from .robust_loss_pytorch import AdaptiveLossFunction
 
 class PartBulider(object):
     '''
@@ -70,7 +70,7 @@ class PartBulider(object):
         # loss function
         if self.use_robust_Loss == True:
             print('use_robust_Loss')
-            adaptive = robust_loss_pytorch.adaptive.AdaptiveLossFunction(
+            adaptive = AdaptiveLossFunction(
                 num_dims = len(self.y_col), 
                 float_dtype = np.float32, 
                 device = self.device)
@@ -248,14 +248,4 @@ class PartBulider(object):
     def to(self,device):
         self.device = device
         self.net.to(self.device)
-
-# test
-if __name__ == '__main__':
-    fake_df = pd.DataFrame(np.random.normal(size=(1000,20)))
-    x_col = fake_df.columns[:10]
-    y_col = fake_df.columns[10:]
-    part = PartBulider(fake_df,x_col,y_col,use_robust_Loss=True)
-    part.train()
-    res = part.test()
-    print(res)
     
