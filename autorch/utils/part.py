@@ -41,7 +41,8 @@ class PartBulider(object):
         cut_way = [0.8,0.9],
         normalize_idx_list = None,
         device = "cpu",
-        use_robust_Loss = False
+        use_robust_Loss = False,
+        limit_y_range = False
         ):
         
         # config
@@ -58,14 +59,27 @@ class PartBulider(object):
         self.lr = lr
         self.max_epochs = max_epochs
         self.ss_x = MinMaxScaler().fit(df[x_col])
-        self.ss_y = MinMaxScaler().fit(df[y_col])
+        
+        if limit_y_range == True:
+            self.ss_y = MinMaxScaler().fit(df[y_col])
+        if limit_y_range == False:
+            self.ss_y = None
         
         # net
-        self.net = nn.Sequential(
-            nn.Linear(len(self.x_col),self.hidden_size),nn.ReLU(),
-            nn.Linear(self.hidden_size,self.hidden_size),nn.ReLU(),
-            nn.Linear(self.hidden_size,len(self.y_col)),nn.Sigmoid(),
-            ).apply(self.init_weights).to(self.device)
+        if limit_y_range == True:
+            self.net = nn.Sequential(
+                nn.Linear(len(self.x_col),self.hidden_size),nn.ReLU(),
+                nn.Linear(self.hidden_size,self.hidden_size),nn.ReLU(),
+                nn.Linear(self.hidden_size,len(self.y_col)),nn.Sigmoid(),
+                ).apply(self.init_weights).to(self.device)
+        
+        if limit_y_range == False:
+            self.net = nn.Sequential(
+                nn.Linear(len(self.x_col),self.hidden_size),nn.ReLU(),
+                nn.Linear(self.hidden_size,self.hidden_size),nn.ReLU(),
+                nn.Linear(self.hidden_size,len(self.y_col)),
+                ).apply(self.init_weights).to(self.device)
+
         
         # loss function
         if self.use_robust_Loss == True:
@@ -222,7 +236,13 @@ class PartBulider(object):
         '''
         self.net.eval()
         predict = self.net(torch.FloatTensor(self.ss_x.transform(x)).to(self.device))
-        predict = self.ss_y.inverse_transform(predict.detach().cpu().numpy())
+        
+        if limit_y_range == True:
+            predict = self.ss_y.inverse_transform(predict.detach().cpu().numpy())
+        
+        if limit_y_range == False:
+            predict = predict.detach().cpu().numpy()
+        
         predict = pd.DataFrame(predict,index=x.index,columns=self.y_col)
     
         # normalize
