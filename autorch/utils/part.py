@@ -59,21 +59,22 @@ class PartBulider(object):
         self.lr = lr
         self.max_epochs = max_epochs
         self.ss_x = MinMaxScaler().fit(df[x_col])
+        self.limit_y_range = limit_y_range
         
-        if limit_y_range == True:
+        if self.limit_y_range == True:
             self.ss_y = MinMaxScaler().fit(df[y_col])
-        if limit_y_range == False:
+        if self.limit_y_range == False:
             self.ss_y = None
         
         # net
-        if limit_y_range == True:
+        if self.limit_y_range == True:
             self.net = nn.Sequential(
                 nn.Linear(len(self.x_col),self.hidden_size),nn.ReLU(),
                 nn.Linear(self.hidden_size,self.hidden_size),nn.ReLU(),
                 nn.Linear(self.hidden_size,len(self.y_col)),nn.Sigmoid(),
                 ).apply(self.init_weights).to(self.device)
         
-        if limit_y_range == False:
+        if self.limit_y_range == False:
             self.net = nn.Sequential(
                 nn.Linear(len(self.x_col),self.hidden_size),nn.ReLU(),
                 nn.Linear(self.hidden_size,self.hidden_size),nn.ReLU(),
@@ -103,18 +104,34 @@ class PartBulider(object):
         self.data = self.split_data(df,self.x_col,self.y_col)
         
         # train_data_iter
-        self.train_data = TensorDataset(
-            torch.FloatTensor(self.ss_x.transform(self.data['X_train'])).to(self.device),
-            torch.FloatTensor(self.ss_y.transform(self.data['Y_train'])).to(self.device),
-            )
-        self.train_iter = DataLoader(self.train_data,batch_size=self.batch_size)
+        if self.limit_y_range == True:
+            self.train_data = TensorDataset(
+                torch.FloatTensor(self.ss_x.transform(self.data['X_train'])).to(self.device),
+                torch.FloatTensor(self.ss_y.transform(self.data['Y_train'])).to(self.device),
+                )
+            self.train_iter = DataLoader(self.train_data,batch_size=self.batch_size)
 
-        # vaild_data_iter
-        self.vaild_data = TensorDataset(
-            torch.FloatTensor(self.ss_x.transform(self.data['X_vaild'])).to(self.device),
-            torch.FloatTensor(self.ss_y.transform(self.data['Y_vaild'])).to(self.device),
-            )
-        self.vaild_iter = DataLoader(self.vaild_data,batch_size=self.batch_size)
+            # vaild_data_iter
+            self.vaild_data = TensorDataset(
+                torch.FloatTensor(self.ss_x.transform(self.data['X_vaild'])).to(self.device),
+                torch.FloatTensor(self.ss_y.transform(self.data['Y_vaild'])).to(self.device),
+                )
+            self.vaild_iter = DataLoader(self.vaild_data,batch_size=self.batch_size)
+        
+        if self.limit_y_range == False:
+            self.train_data = TensorDataset(
+                torch.FloatTensor(self.ss_x.transform(self.data['X_train'])).to(self.device),
+                torch.FloatTensor(self.data['Y_train'].values).to(self.device),
+                )
+            self.train_iter = DataLoader(self.train_data,batch_size=self.batch_size)
+
+            # vaild_data_iter
+            self.vaild_data = TensorDataset(
+                torch.FloatTensor(self.ss_x.transform(self.data['X_vaild'])).to(self.device),
+                torch.FloatTensor(self.data['Y_vaild'].values).to(self.device),
+                )
+            self.vaild_iter = DataLoader(self.vaild_data,batch_size=self.batch_size)
+
     
     '''
     ## help functions area ##
@@ -237,10 +254,10 @@ class PartBulider(object):
         self.net.eval()
         predict = self.net(torch.FloatTensor(self.ss_x.transform(x)).to(self.device))
         
-        if limit_y_range == True:
+        if self.ss_y != None:
             predict = self.ss_y.inverse_transform(predict.detach().cpu().numpy())
-        
-        if limit_y_range == False:
+
+        else:
             predict = predict.detach().cpu().numpy()
         
         predict = pd.DataFrame(predict,index=x.index,columns=self.y_col)
@@ -273,7 +290,7 @@ if __name__ == '__main__':
     df = pd.DataFrame(np.random.normal(size=(1000,20)))
     x_col = df.columns[:10]
     y_col = df.columns[10:]
-    part = PartBulider(df,x_col,y_col,use_robust_Loss=True)
+    part = PartBulider(df,x_col,y_col,use_robust_Loss=True,limit_y_range=False)
     part.train()
     res = part.test()
     print(res)
