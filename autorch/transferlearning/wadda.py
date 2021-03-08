@@ -14,7 +14,6 @@ warnings.simplefilter('ignore')
 class WADDA(nn.Module):
   def __init__(self,src_x,src_y,tgt_x,tgt_y,
     normalize_idx_list = None,
-    normalize_idx_list_coef = None,
     limit_y_range = False,
     train_stage_1_epochs = 3000,
     train_stage_2_epochs = 10000,
@@ -40,7 +39,6 @@ class WADDA(nn.Module):
     self.input_dim = src_x.shape[1]
     self.output_dim = src_y.shape[1]
     self.normalize_idx_list = normalize_idx_list
-    self.normalize_idx_list_coef = normalize_idx_list_coef
     self.limit_y_range = limit_y_range
     self.train_stage_1_epochs = train_stage_1_epochs
     self.train_stage_2_epochs = train_stage_2_epochs
@@ -238,8 +236,8 @@ class WADDA(nn.Module):
       tgt_reg[:] = self.scaler_y.inverse_transform(tgt_reg[:])
     
     if self.normalize_idx_list != None:
-      for idx,coef in zip(self.normalize_idx_list,self.normalize_idx_list_coef):
-        tgt_reg.iloc[:,idx] = self.normalize(tgt_reg.iloc[:,idx])*coef
+      for idx in self.normalize_idx_list:
+        tgt_reg.iloc[:,idx] = self.normalize(tgt_reg.iloc[:,idx])
     
     return tgt_reg
   
@@ -274,7 +272,6 @@ if __name__ == '__main__':
     
     model = WADDA(src_x, src_y, tgt_x, tgt_y,
                   normalize_idx_list = normalize_idx_list,
-                  normalize_idx_list_coef = [ 100.0 for _ in range(41)],
                   limit_y_range = True,
                   train_stage_1_epochs=100,
                   train_stage_2_epochs=100,
