@@ -178,6 +178,7 @@ class PartBulider(object):
         '''
         x_idx,x_col = x.index,x.columns
         x = x.values
+        x = np.clip(x,0,1)
         x = x / x.sum(axis=1).reshape(-1,1)
         return pd.DataFrame(x,index=x_idx,columns=x_col)
   
