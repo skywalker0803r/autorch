@@ -63,6 +63,7 @@ Our framework consists of three main components:
   L_{adv} = \mathbb{E}_{Z_t \sim F_t(X_t)}[D(Z_t)] - \mathbb{E}_{Z_s \sim F_s(X_s)}[D(Z_s)]
   \]
   where $Z_s, Z_t$ are encoded features. The discriminator $D$ is updated to minimize $L_{adv}$, while the target feature extractor $F_t$ is updated to maximize $L_{adv}$, encouraging indistinguishable latent features.
+\end{itemize}
 
 \subsection{Training Procedure}
 We employ a two-stage training approach summarized in Algorithm~\ref{alg:training}:
