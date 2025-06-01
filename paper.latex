@@ -1,0 +1,132 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{authblk}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\geometry{margin=1in}
+
+\title{WADDA: A Wasserstein Adversarial Domain Adaptation Framework for Regression Tasks}
+
+\author{yu zheng long}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper presents WADDA (Wasserstein Adversarial Domain Adaptation), a novel deep learning framework designed to bridge the domain gap between synthetic and real-world datasets in regression tasks. WADDA leverages a two-stage training process combining supervised learning and adversarial domain adaptation using the Wasserstein GAN framework. Extensive experiments demonstrate the model's effectiveness in aligning feature spaces and improving predictive performance on target domains.
+\end{abstract}
+
+\section{Introduction}
+In many real-world applications, acquiring high-quality labeled data is challenging and costly. Synthetic data generated from simulations offers an alternative, yet models trained on synthetic datasets often suffer from significant performance degradation when applied to real-world data due to domain shift. To address this issue, we propose WADDA, a two-stage adversarial domain adaptation framework using Wasserstein GAN principles, tailored for regression tasks with domain discrepancy.
+
+\section{Methodology}
+\begin{algorithm}
+\caption{WADDA Training Procedure}
+\begin{algorithmic}[1]
+\State \textbf{Input:} Source data $(X_s, Y_s)$, Target data $X_t$
+\State \textbf{Initialize:} Feature extractors $F_s, F_t$, Regressor $R$, Discriminator $D$
+\State \textbf{Stage 1: Supervised Pretraining on Source Domain}
+\For{each epoch in Stage 1}
+    \State Extract source features $Z_s = F_s(X_s)$
+    \State Predict outputs $\hat{Y}_s = R(Z_s)$
+    \State Compute regression loss $L_{reg} = \text{SmoothL1}(\hat{Y}_s, Y_s)$
+    \State Update $F_s$, $R$ using backpropagation
+\EndFor
+\State \textbf{Stage 2: Adversarial Adaptation}
+\For{each epoch in Stage 2}
+    \For{each batch}
+        \State $Z_s = F_s(X_s)$ \Comment{Freeze $F_s$}
+        \State $Z_t = F_t(X_t)$
+        \State Compute Wasserstein loss $L_{adv} = D(Z_t) - D(Z_s)$
+        \State Update $D$ to minimize $L_{adv}$ (gradient descent)
+        \State Update $F_t$ to maximize $L_{adv}$ (gradient ascent)
+        \State Predict $\hat{Y}_t = R(Z_t)$
+        \State Compute target regression loss $L_{reg} = \text{SmoothL1}(\hat{Y}_t, Y_t)$ (if $Y_t$ available)
+        \State Update $R$ to minimize $L_{reg}$
+    \EndFor
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+
+\subsection{Problem Setup}
+Let $X_s, Y_s$ denote the input and output from the source (synthetic) domain, and $X_t, Y_t$ from the target (real) domain. Our goal is to learn a regression model that generalizes well on $X_t$ using knowledge from $X_s$ and $Y_s$.
+
+\subsection{Preprocessing}
+Inputs $X_s$ and $X_t$ are normalized using a standard scaler. If enabled, outputs $Y_s$ are scaled using MinMaxScaler. To ensure certain output columns sum to one, normalization is applied post-prediction.
+
+\subsection{Model Architecture}
+\begin{itemize}
+  \item \textbf{Feature Extractors}: Separate neural networks are used for source ($F_s$) and target ($F_t$) domain encoding.
+  \item \textbf{Regressor}: A shared regression head predicts outputs from latent features.
+  \item \textbf{Discriminator}: A domain classifier trained to distinguish between source and target features using Wasserstein distance.
+\end{itemize}
+
+\subsection{Loss Functions}
+\begin{itemize}
+  \item \textbf{Regression Loss}: Smooth L1 loss is used for supervised regression on source and target domains.
+  \item \textbf{Adversarial Loss}: Discriminator minimizes Wasserstein distance by maximizing margin between source and target distributions.
+\end{itemize}
+
+\subsection{Training Procedure}
+\textbf{Stage 1: Supervised Pretraining} — Train $F_s$ and the regression head on source data using supervised loss.
+
+\textbf{Stage 2: Adversarial Adaptation} — Iteratively update:
+\begin{itemize}
+  \item Discriminator $D$ to maximize source-target domain separation.
+  \item Target encoder $F_t$ to fool $D$ by minimizing the adversarial loss.
+  \item Regression head to minimize target domain regression loss using $F_t$.
+\end{itemize}
+
+\section{Experiments}
+We evaluate WADDA using synthetic and real-valued regression datasets. Inputs contain 100 features; outputs consist of 164 dimensions, grouped into 41 sets requiring normalization.
+
+\subsection{Training Details}
+\begin{itemize}
+  \item Epochs: 100 (Stage 1), 100 (Stage 2)
+  \item Batch size: 64
+  \item Optimizers: Adam (Stage 1), RMSProp (Stage 2)
+  \item Hyperparameters: learning rate $=10^{-4}$, $\alpha=5 \times 10^{-5}$, $c=0.01$
+\end{itemize}
+
+\subsection{Results}
+The predictions on target domain data show proper alignment with the expected output distributions. Output normalization was preserved post-inference, confirming model consistency across grouped indices.
+
+\begin{table}[h]
+\centering
+\caption{Performance Comparison on Target Domain}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Method} & \textbf{R\textsuperscript{2}} & \textbf{RMSE} & \textbf{MAPE (\%)} \\
+\hline
+\textbf{WADDA (Ours)} & 0.6663 & 1.0359 & 47.60 \\
+XGBoost (4565 source + 200 target) & -4.1935 & 3.5477 & 233.41 \\
+XGBoost (200 target only) & -1.9144 & 2.8563 & 185.26 \\
+\hline
+\end{tabular}
+\label{tab:performance}
+\end{table}
+
+\section{Conclusion}
+WADDA effectively adapts features from synthetic to real domains using adversarial learning based on Wasserstein distance. It is particularly suited for regression tasks requiring grouped output normalization and distribution alignment. Future work includes expanding to semi-supervised and online learning settings.
+
+\bibliographystyle{plain}
+\begin{thebibliography}{9}
+\bibitem{arjovsky2017wasserstein}
+Martin Arjovsky, Soumith Chintala, and Léon Bottou. 
+\textit{Wasserstein GAN}. arXiv preprint arXiv:1701.07875, 2017.
+
+\bibitem{ganin2016domain}
+Yaroslav Ganin et al.
+\textit{Domain-Adversarial Training of Neural Networks}.
+Journal of Machine Learning Research, 17(59):1–35, 2016.
+\end{thebibliography}
+
+\end{document}
