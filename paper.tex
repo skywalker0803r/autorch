@@ -11,7 +11,7 @@
 
 \title{WADDA: A Wasserstein Adversarial Domain Adaptation Framework for Regression Tasks}
 
-\author{yu zheng long}
+\author{Yu Zhenglong}
 
 \date{}
 
@@ -20,15 +20,56 @@
 \maketitle
 
 \begin{abstract}
-This paper presents WADDA (Wasserstein Adversarial Domain Adaptation), a novel deep learning framework designed to bridge the domain gap between synthetic and real-world datasets in regression tasks. WADDA leverages a two-stage training process combining supervised learning and adversarial domain adaptation using the Wasserstein GAN framework. Extensive experiments demonstrate the model's effectiveness in aligning feature spaces and improving predictive performance on target domains.
+This paper presents WADDA (Wasserstein Adversarial Domain Adaptation), a novel deep learning framework designed to bridge the domain gap between synthetic and real-world datasets in regression tasks. WADDA employs a two-stage training process that combines supervised learning with adversarial domain adaptation based on the Wasserstein GAN principle. Extensive experiments demonstrate that WADDA effectively aligns latent feature distributions, preserves output constraints, and outperforms baseline methods on target domain prediction tasks.
 \end{abstract}
 
 \section{Introduction}
-In many real-world applications, acquiring high-quality labeled data is challenging and costly. Synthetic data generated from simulations offers an alternative, yet models trained on synthetic datasets often suffer from significant performance degradation when applied to real-world data due to domain shift. To address this issue, we propose WADDA, a two-stage adversarial domain adaptation framework using Wasserstein GAN principles, tailored for regression tasks with domain discrepancy.
+In real-world scenarios, collecting sufficient labeled data for regression tasks can be costly and time-consuming. Synthetic data generated from simulations provides an alternative, yet models trained solely on synthetic datasets often exhibit significant performance degradation due to domain shift. While many domain adaptation techniques have shown promise in classification tasks, relatively few are tailored for regression with structured outputs.
+
+To address this gap, we propose WADDA, a Wasserstein Adversarial Domain Adaptation framework specifically designed for regression tasks. Our contributions are:
+\begin{itemize}
+  \item We design a two-stage domain adaptation pipeline that separates supervised pretraining from adversarial alignment, allowing better initialization and stability.
+  \item We incorporate Wasserstein loss to improve feature alignment between source and target domains without vanishing gradients, unlike traditional GAN-based methods.
+  \item We explicitly handle structured regression outputs that require group-wise normalization, preserving domain-specific output constraints.
+  \item We empirically show that WADDA outperforms conventional baselines such as XGBoost on the target domain.
+\end{itemize}
 
 \section{Methodology}
+
+\subsection{Problem Setup}
+Let $X_s, Y_s$ denote the input and output from the source (synthetic) domain, and $X_t, Y_t$ from the target (real) domain. Our goal is to learn a regression model that generalizes well on $X_t$ using knowledge from $X_s$ and $Y_s$. In many practical cases, target domain labels $Y_t$ may be partially or fully unavailable.
+
+\subsection{Preprocessing}
+Inputs $X_s$ and $X_t$ are normalized using standard scaling to zero mean and unit variance. When output labels $Y_s$ are available, we apply MinMax scaling to restrict their range between 0 and 1. Additionally, because output vectors are grouped (23 groups of outputs summing to one), we apply group-wise normalization after prediction to ensure consistency.
+
+\subsection{Model Architecture}
+Our framework consists of three main components:
+\begin{itemize}
+  \item \textbf{Feature Extractors}: Two separate neural networks, $F_s$ for the source domain and $F_t$ for the target domain, encode raw inputs into latent feature spaces.
+  \item \textbf{Regressor}: A shared regression head $R$ takes latent features from either domain and outputs continuous predictions.
+  \item \textbf{Discriminator}: A domain discriminator $D$ trained adversarially to distinguish source from target latent features by estimating Wasserstein distance.
+\end{itemize}
+
+\subsection{Loss Functions}
+\begin{itemize}
+  \item \textbf{Regression Loss:} We use the Smooth L1 loss between predicted outputs $\hat{Y}$ and ground truth $Y$ for supervised learning:
+  \[
+  L_{reg}(\hat{Y}, Y) = \text{SmoothL1}(\hat{Y}, Y)
+  \]
+  This loss is applied on source domain labeled data during pretraining, and optionally on target domain labeled data if available.
+  
+  \item \textbf{Adversarial Loss:} The discriminator $D$ aims to minimize the Wasserstein distance between source and target latent feature distributions:
+  \[
+  L_{adv} = \mathbb{E}_{Z_t \sim F_t(X_t)}[D(Z_t)] - \mathbb{E}_{Z_s \sim F_s(X_s)}[D(Z_s)]
+  \]
+  where $Z_s, Z_t$ are encoded features. The discriminator $D$ is updated to minimize $L_{adv}$, while the target feature extractor $F_t$ is updated to maximize $L_{adv}$, encouraging indistinguishable latent features.
+
+\subsection{Training Procedure}
+We employ a two-stage training approach summarized in Algorithm~\ref{alg:training}:
+
 \begin{algorithm}
 \caption{WADDA Training Procedure}
+\label{alg:training}
 \begin{algorithmic}[1]
 \State \textbf{Input:} Source data $(X_s, Y_s)$, Target data $X_t$
 \State \textbf{Initialize:} Feature extractors $F_s, F_t$, Regressor $R$, Discriminator $D$
@@ -42,72 +83,50 @@ In many real-world applications, acquiring high-quality labeled data is challeng
 \State \textbf{Stage 2: Adversarial Adaptation}
 \For{each epoch in Stage 2}
     \For{each batch}
-        \State $Z_s = F_s(X_s)$ \Comment{Freeze $F_s$}
-        \State $Z_t = F_t(X_t)$
+        \State Extract source features $Z_s = F_s(X_s)$ (freeze $F_s$)
+        \State Extract target features $Z_t = F_t(X_t)$
         \State Compute Wasserstein loss $L_{adv} = D(Z_t) - D(Z_s)$
-        \State Update $D$ to minimize $L_{adv}$ (gradient descent)
-        \State Update $F_t$ to maximize $L_{adv}$ (gradient ascent)
-        \State Predict $\hat{Y}_t = R(Z_t)$
-        \State Compute target regression loss $L_{reg} = \text{SmoothL1}(\hat{Y}_t, Y_t)$ (if $Y_t$ available)
-        \State Update $R$ to minimize $L_{reg}$
+        \State Update discriminator $D$ by minimizing $L_{adv}$
+        \State Update target encoder $F_t$ by maximizing $L_{adv}$
+        \State Predict target outputs $\hat{Y}_t = R(Z_t)$
+        \If{$Y_t$ available}
+            \State Compute regression loss $L_{reg} = \text{SmoothL1}(\hat{Y}_t, Y_t)$
+            \State Update regressor $R$ to minimize $L_{reg}$
+        \EndIf
     \EndFor
 \EndFor
 \end{algorithmic}
 \end{algorithm}
 
-
-\subsection{Problem Setup}
-Let $X_s, Y_s$ denote the input and output from the source (synthetic) domain, and $X_t, Y_t$ from the target (real) domain. Our goal is to learn a regression model that generalizes well on $X_t$ using knowledge from $X_s$ and $Y_s$.
-
-\subsection{Preprocessing}
-Inputs $X_s$ and $X_t$ are normalized using a standard scaler. If enabled, outputs $Y_s$ are scaled using MinMaxScaler. To ensure certain output columns sum to one, normalization is applied post-prediction.
-
-\subsection{Model Architecture}
-\begin{itemize}
-  \item \textbf{Feature Extractors}: Separate neural networks are used for source ($F_s$) and target ($F_t$) domain encoding.
-  \item \textbf{Regressor}: A shared regression head predicts outputs from latent features.
-  \item \textbf{Discriminator}: A domain classifier trained to distinguish between source and target features using Wasserstein distance.
-\end{itemize}
-
-\subsection{Loss Functions}
-\begin{itemize}
-  \item \textbf{Regression Loss}: Smooth L1 loss is used for supervised regression on source and target domains.
-  \item \textbf{Adversarial Loss}: Discriminator minimizes Wasserstein distance by maximizing margin between source and target distributions.
-\end{itemize}
-
-\subsection{Training Procedure}
-\textbf{Stage 1: Supervised Pretraining} — Train $F_s$ and the regression head on source data using supervised loss.
-
-\textbf{Stage 2: Adversarial Adaptation} — Iteratively update:
-\begin{itemize}
-  \item Discriminator $D$ to maximize source-target domain separation.
-  \item Target encoder $F_t$ to fool $D$ by minimizing the adversarial loss.
-  \item Regression head to minimize target domain regression loss using $F_t$.
-\end{itemize}
-
 \section{Experiments}
-We evaluate WADDA using synthetic and real-valued regression datasets. Inputs contain 100 features; outputs consist of 164 dimensions, grouped into 41 sets requiring normalization.
+
+\subsection{Setup}
+We evaluate WADDA on synthetic-to-real regression datasets with structured output constraints. Each input vector has 4 dimensions, and the 23-dimensional output vector is normalized such that the sum of its elements equals one.
 
 \subsection{Training Details}
 \begin{itemize}
   \item Epochs: 100 (Stage 1), 100 (Stage 2)
   \item Batch size: 64
   \item Optimizers: Adam (Stage 1), RMSProp (Stage 2)
-  \item Hyperparameters: learning rate $=10^{-4}$, $\alpha=5 \times 10^{-5}$, $c=0.01$
+  \item Learning rate: $10^{-4}$; gradient penalty coefficient $c = 0.01$
+\end{itemize}
+
+\subsection{Baselines}
+\begin{itemize}
+  \item \textbf{XGBoost} (with and without target data)
 \end{itemize}
 
 \subsection{Results}
-The predictions on target domain data show proper alignment with the expected output distributions. Output normalization was preserved post-inference, confirming model consistency across grouped indices.
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \caption{Performance Comparison on Target Domain}
 \begin{tabular}{|l|c|c|c|}
 \hline
 \textbf{Method} & \textbf{R\textsuperscript{2}} & \textbf{RMSE} & \textbf{MAPE (\%)} \\
 \hline
-\textbf{WADDA (Ours)} & 0.6663 & 1.0359 & 47.60 \\
-XGBoost (4565 source + 200 target) & -4.1935 & 3.5477 & 233.41 \\
+\textbf{WADDA (Ours)} & \textbf{0.6663} & \textbf{1.0359} & \textbf{47.60} \\
+XGBoost (source + 200 target) & -4.1935 & 3.5477 & 233.41 \\
 XGBoost (200 target only) & -1.9144 & 2.8563 & 185.26 \\
 \hline
 \end{tabular}
@@ -115,7 +134,7 @@ XGBoost (200 target only) & -1.9144 & 2.8563 & 185.26 \\
 \end{table}
 
 \section{Conclusion}
-WADDA effectively adapts features from synthetic to real domains using adversarial learning based on Wasserstein distance. It is particularly suited for regression tasks requiring grouped output normalization and distribution alignment. Future work includes expanding to semi-supervised and online learning settings.
+WADDA presents an effective domain adaptation framework for regression problems, particularly when outputs require structure-aware normalization. Through Wasserstein-based adversarial alignment, it significantly improves generalization performance on the target domain. Future work will explore semi-supervised extensions and online adaptation under streaming data scenarios.
 
 \bibliographystyle{plain}
 \begin{thebibliography}{9}
